@@ -1,6 +1,100 @@
-git clone https://github.com/cr001-png/Roga-game.git
-cd Roga-game
-# ajoute tes fichiers
-git add .
-git commit -m "Ajout du jeu"
-git push
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roga – Éteins tout</title>
+<style>
+:root{--bg:#f3f1ee;--ink:#1d2a33;--off:#cfd6da;--on:#e8a317;--on2:#f6c94e;--muted:#5b6a73}
+@media (prefers-color-scheme:dark){:root{--bg:#10181d;--ink:#e9eef0;--off:#26343c;--on:#f0b429;--on2:#ffd76a;--muted:#8fa0a8}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px;background:var(--bg);color:var(--ink);font-family:Georgia,"Times New Roman",serif}
+h1{margin:0;font-size:2rem;letter-spacing:.01em}
+p{margin:0;color:var(--muted);text-align:center;max-width:22rem;line-height:1.4}
+.stats{display:flex;gap:24px;font-size:1.1rem}
+#board{display:grid;gap:8px;width:min(92vw,420px);aspect-ratio:1}
+.c{border:0;border-radius:14px;background:var(--off);cursor:pointer;transition:background .15s,transform .1s}
+.c.on{background:radial-gradient(circle at 35% 30%,var(--on2),var(--on));box-shadow:0 0 18px var(--on)}
+.c:active{transform:scale(.93)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button.b{font:inherit;padding:10px 16px;border-radius:10px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+button.b:focus-visible,.c:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#msg{min-height:1.4em;font-weight:bold}
+</style>
+</head>
+<body>
+<h1>Éteins tout</h1>
+<p>Toucher une case change son état et celui de ses voisines. Éteins toutes les lumières en un minimum de coups.</p>
+<div class="stats"><span>Niveau <b id="lvl">1</b></span><span>Coups <b id="mv">0</b></span></div>
+<div id="board" role="grid" aria-label="Grille"></div>
+<div id="msg" aria-live="polite"></div>
+<div class="row">
+  <button class="b" id="reset">Recommencer</button>
+  <button class="b" id="next">Nouveau niveau</button>
+</div>
+<script>
+(function(){
+  var board=document.getElementById('board'),mv=document.getElementById('mv'),
+      lvlEl=document.getElementById('lvl'),msg=document.getElementById('msg');
+  var level=1,moves=0,N=3,grid=[],start=[],won=false;
+  try{var s=parseInt(localStorage.getItem('roga-level'),10);if(s>0)level=s;}catch(e){}
+
+  function sizeFor(l){return l<4?3:l<9?4:5;}
+  function press(g,i,j){
+    [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      var a=i+d[0],b=j+d[1];
+      if(a>=0&&b>=0&&a<N&&b<N)g[a][b]=!g[a][b];
+    });
+  }
+  function make(){
+    N=sizeFor(level);
+    var g,taps=Math.min(2+level,N*N-1),tries=0;
+    do{
+      g=[];for(var i=0;i<N;i++){g.push([]);for(var j=0;j<N;j++)g[i].push(false);}
+      var used={};
+      for(var t=0;t<taps;t++){
+        var k;do{k=Math.floor(Math.random()*N*N);}while(used[k]);
+        used[k]=1;press(g,Math.floor(k/N),k%N);
+      }
+      tries++;
+    }while(g.every(function(r){return r.every(function(x){return !x;});})&&tries<20);
+    start=g.map(function(r){return r.slice();});
+    load();
+  }
+  function load(){
+    grid=start.map(function(r){return r.slice();});
+    moves=0;won=false;msg.textContent='';
+    board.style.gridTemplateColumns='repeat('+N+',1fr)';
+    board.style.gridTemplateRows='repeat('+N+',1fr)';
+    lvlEl.textContent=level;draw();
+  }
+  function draw(){
+    board.innerHTML='';
+    for(var i=0;i<N;i++)for(var j=0;j<N;j++){
+      var b=document.createElement('button');
+      b.className='c'+(grid[i][j]?' on':'');
+      b.setAttribute('aria-label','Case '+(i+1)+','+(j+1)+(grid[i][j]?' allumée':' éteinte'));
+      b.dataset.i=i;b.dataset.j=j;board.appendChild(b);
+    }
+    mv.textContent=moves;
+  }
+  board.addEventListener('click',function(e){
+    var b=e.target.closest('.c');if(!b||won)return;
+    press(grid,+b.dataset.i,+b.dataset.j);moves++;draw();
+    if(grid.every(function(r){return r.every(function(x){return !x;});})){
+      won=true;msg.textContent='Bravo ! Résolu en '+moves+' coups.';
+      level++;try{localStorage.setItem('roga-level',level);}catch(e){}
+    }
+  });
+  document.getElementById('reset').onclick=function(){
+    if(won){level--;lvlEl.textContent=level;}load();
+  };
+  document.getElementById('next').onclick=function(){
+    if(!won&&!confirm('Passer ce niveau ?'))return;
+    if(!won)level++;make();
+  };
+  make();
+})();
+</script>
+</body>
+</html>
