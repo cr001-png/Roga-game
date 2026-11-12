@@ -1,0 +1,6 @@
+git clone https://github.com/cr001-png/Roga-game.git
+cd Roga-game
+# ajoute tes fichiers
+git add .
+git commit -m "Ajout du jeu"
+git push
